@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .nav-bar{
+        display: flex;
+        justify-content: space-between;
+        height: 80px;
+    }
+    li{
+        list-style: none; display: inline-block;
+    }
+    .nav-bar a{
+        display:flex;
+        text-decoration: none;
+        text-align: center;
+        padding-left: 15px;
+        font-size:large;
+        color:rgb(143,106,174) ;
+        margin-right: 25px;
+        font-weight: bold;
+    }
+    
+    .nav-bar .nav-logo{
+        width: 120px;
+        height: 30px;
+    }
+    p{
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: larger;
+    }    
+
+    body{
+        background-color: black;
+        animation: blink 1s infinite;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+    
+    .container{
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+    @keyframes blink {
+        0% { background-color: black; }
+        50% { background-color: red; }
+        100% { background-color: black; }
+    }
+    
+    .container {
+        text-align: center; /* Align content horizontally */
+        color: aliceblue;
+    }
+    svg{
+        width: 150px;
+        height: 150px;
+        padding: 10px;
+        border-radius: 20px;
+    }
+</style>
+
+<div class="nav-bar">
+    <img class="nav-logo" src="static\logo\3x\Asset 1@2x.png" >
+    <ul>
+        <li><a href="/" >Home</a></li>
+        <li><a href="/about">About</a></li>    
+    </ul>
+</div> 
+
+<div class="container">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#FFD43B" d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>
+    <h1>Google Verified phishing link</h1>
+    <p  >Warning: Proceeding to this link may put your personal information at risk due to potential phishing. It's best to steer clear of it. </p>
+
+    <div id="data-container">
+        <ul>
+            <li>Google Verified: {{ verified_response.google_verified }}</li><br>
+            <li>Platform Type: {{ verified_response.platform_type }}</li><br>
+            <li>Threat Entry Type: {{ verified_response.threat_entry_type }}</li><br>
+            <li>Threat Type: {{ verified_response.threat_type }}</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
