@@ -6,8 +6,8 @@ load_dotenv()
 
 def google_verification(url):
     try:
-        api_key = os.getenv("API_KEY")  # Retrieve API key from environment variable
-        api_url = os.getenv("API_URL")  # Retrieve API URL from environment variable
+        api_key = "AIzaSyDWghaC4_rBMWvhZXNEqID2BexP62DMWM4"  # Retrieve API key from environment variable
+        api_url = "https://safebrowsing.googleapis.com/v4"  # Retrieve API URL from environment variable
         
         if api_key is None or api_url is None:
             print("Google API key or URL not found in environment variables. Make sure to add them to your .env file.")

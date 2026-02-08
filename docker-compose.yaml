@@ -1,0 +1,14 @@
+services:
+  backend:
+    build: ./Camillo-API-main
+    ports:
+      - "6969:6969"
+
+  frontend:
+    build: ./Camillo-Frontend-main
+    ports:
+      - "5000:5000"
+    environment:
+      - API_URL=http://backend:6969/api/analyze-url
+    depends_on:
+      - backend

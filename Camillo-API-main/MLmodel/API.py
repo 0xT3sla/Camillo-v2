@@ -1,27 +1,52 @@
+import os
+from dotenv import load_dotenv
 from tensorflow import keras
 from MLmodel.Feature_Extractor import extract_features
-from dotenv import load_dotenv
-import os
+
+# ---------------------------------------------------------------------
+# Environment setup
+# ---------------------------------------------------------------------
 
 load_dotenv()
 
-# ------------------------------------------------------------------------
+# API.py lives in /app/MLmodel
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# This function takes the url and returns probability value
-model_path = os.getenv("MODEL_PATH")
+MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "models",
+    "Malicious_URL_Prediction.h5"
+)
 
-def get_prediction(url):
-    print("Loading the model...")
-    model = keras.models.load_model(model_path)
+# ---------------------------------------------------------------------
+# Load model ONCE at startup
+# ---------------------------------------------------------------------
 
-    print("Extracting features from url...")
+print("[INFO] Resolving model path:", MODEL_PATH)
+
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(f"Model file not found at: {MODEL_PATH}")
+
+print("[INFO] Loading model...")
+model = keras.models.load_model(MODEL_PATH)
+print("[INFO] Model loaded successfully")
+
+# ---------------------------------------------------------------------
+# Prediction function
+# ---------------------------------------------------------------------
+
+def get_prediction(url: str) -> float:
+    """
+    Takes a URL string and returns the malicious probability (0–100)
+    """
+    print("[INFO] Extracting features...")
     url_features = extract_features(url)
-    print(url_features)
 
-    print("Making prediction...")
-    prediction = model.predict([url_features])
-    print(prediction)
-    i = prediction[0][0] * 100
-    i = round(i,3)
+    # Model expects batch input
+    url_features = [url_features]
 
-    return i
+    print("[INFO] Making prediction...")
+    prediction = model.predict(url_features, verbose=0)
+
+    probability = float(prediction[0][0]) * 100
+    return round(probability, 3)

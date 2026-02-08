@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 import json
 import html
 from functools import wraps
+import os
 
 app = Flask(__name__)
 
@@ -30,7 +31,8 @@ def check_mobile():
         if not request.path.startswith('/static'):
             return redirect('/mobile')
 
-API_URL = "http://127.0.0.1:6969/api/analyze-url"
+API_URL = os.getenv("API_URL")
+
 
 @app.route('/',  methods=['GET','POST'])
 def home():
