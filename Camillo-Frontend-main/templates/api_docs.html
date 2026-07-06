@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="nav-bar">
+    <img class="nav-logo" src="{{ url_for('static', filename='logo/3x/Asset 1@2x.png') }}" >
+    <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/about">About</a></li>    
+        <li><a href="/api/docs">API Docs</a></li>
+    </ul>
+</div>
+
+<div class="api-docs-container">
+    <h1 class="glow-text">Developer API Reference</h1>
+    <p class="subtitle">Integrate Camillo-v2's malicious URL detection engine directly into your own applications.</p>
+
+    <div class="api-card">
+        <div class="api-method-header">
+            <span class="method post">POST</span>
+            <code class="endpoint">/api/analyze-url</code>
+        </div>
+        <p class="api-description">Analyzes a given URL through heuristic rules and a TensorFlow deep learning model to predict whether it is a phishing or malicious link.</p>
+
+        <h3>Request Headers</h3>
+        <table class="table-view">
+            <thead>
+                <tr>
+                    <th>Header</th>
+                    <th>Value</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Content-Type</code></td>
+                    <td><code>application/json</code></td>
+                    <td>Required. Set to JSON content.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Request Body</h3>
+        <p>The URL to analyze must be <strong>URL-safe Base64 encoded</strong> to prevent parsing issues with special characters in the payload.</p>
+        <table class="table-view">
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>url</code></td>
+                    <td><code>string</code></td>
+                    <td>Yes</td>
+                    <td>The URL-safe Base64 encoded URL to analyze (e.g., <code>aHR0cHM6Ly9nb29nbGUuY29t</code>).</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Request Example (Python)</h3>
+        <pre><code class="code-block">import requests
+import base64
+
+api_url = "http://localhost:6969/api/analyze-url"
+target_url = "https://google.com"
+
+# Encode URL to URL-safe Base64
+encoded_url = base64.urlsafe_b64encode(target_url.encode('utf-8')).decode('utf-8')
+
+payload = {
+    "url": encoded_url
+}
+
+response = requests.post(api_url, json=payload)
+data = response.json()
+print("Phishing Verdict:", data.get("final_verdict"))
+print("Trust Score:", data.get("trust_score"))
+print("Model Score:", data.get("model_score"))</code></pre>
+
+        <h3>Request Example (cURL)</h3>
+        <pre><code class="code-block">curl -X POST http://localhost:6969/api/analyze-url \
+  -H "Content-Type: application/json" \
+  -d '{"url": "aHR0cHM6Ly9nb29nbGUuY29t"}'</code></pre>
+
+        <h3>JSON Response Schema</h3>
+        <table class="table-view">
+            <thead>
+                <tr>
+                    <th>Key</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>status</code></td>
+                    <td><code>string</code></td>
+                    <td><code>SUCCESS</code> or <code>ERROR</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>url</code></td>
+                    <td><code>string</code></td>
+                    <td>The analyzed URL string.</td>
+                </tr>
+                <tr>
+                    <td><code>trust_score</code></td>
+                    <td><code>integer</code></td>
+                    <td>A score from <code>0–100</code> calculated using traditional heuristic analysis (higher = safer).</td>
+                </tr>
+                <tr>
+                    <td><code>model_score</code></td>
+                    <td><code>integer</code></td>
+                    <td>Suspicion score from <code>0–100</code> predicted by the TensorFlow neural network (higher = more suspicious).</td>
+                </tr>
+                <tr>
+                    <td><code>final_verdict</code></td>
+                    <td><code>boolean</code></td>
+                    <td><code>true</code> if flagged as phishing/malicious, otherwise <code>false</code>.</td>
+                </tr>
+                <tr>
+                    <td><code>google_verified</code></td>
+                    <td><code>string</code></td>
+                    <td>Google Safe Browsing verification status (<code>yes</code>, <code>no</code>, <code>error</code>).</td>
+                </tr>
+                <tr>
+                    <td><code>breakdown</code></td>
+                    <td><code>array</code></td>
+                    <td>A detailed breakdown list containing heuristic rule failures with severity tags.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Response Example</h3>
+        <pre><code class="code-block">{
+  "status": "SUCCESS",
+  "url": "https://google.com",
+  "trust_score": 93,
+  "model_score": 12,
+  "final_verdict": false,
+  "google_verified": "no",
+  "rank": 1,
+  "age": "28.5 year(s)",
+  "is_url_shortened": 0,
+  "hsts_support": 1,
+  "ip_present": 0,
+  "url_redirects": [],
+  "too_long_url": 0,
+  "too_deep_url": 0,
+  "breakdown": [
+    {
+      "title": "Global Popularity",
+      "desc": "Domain is highly trusted and ranked #1 globally.",
+      "severity": "safe"
+    },
+    {
+      "title": "Domain Age",
+      "desc": "Domain is established and has been registered for 28.5 years.",
+      "severity": "safe"
+    }
+  ]
+}</code></pre>
+    </div>
+</div>
+{% endblock %}

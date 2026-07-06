@@ -6,14 +6,12 @@ import whois
 import urllib
 import urllib.request
 from datetime import datetime
-import requests
 import json
 import csv
 import time
 import socket
 import ssl
-from flask import Flask, render_template, request
-import requests
+import os
 from MLmodel import Feature_Extractor ,Url_Features
 from MLmodel.API import get_prediction
 
@@ -32,12 +30,70 @@ PROPERTY_SCORE_WEIGHTAGE = {
     'content': 0.1
 }
 
+# Pre-load rankings and url-shorteners to avoid repeated disk reads
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TOP_1M_PATH = os.path.join(BASE_DIR, 'static', 'data', 'sorted-top1million.txt')
+DOMAIN_RANK_PATH = os.path.join(BASE_DIR, 'static', 'data', 'domain-rank.json')
+URL_SHORTENERS_PATH = os.path.join(BASE_DIR, 'static', 'data', 'url-shorteners.txt')
 
+TOP_1M_LIST = []
+DOMAIN_RANK_DICT = {}
+URL_SHORTENERS_LIST = []
+
+try:
+    print("[INFO] Loading top 1M domains list from disk...")
+    start_t = time.time()
+    if os.path.exists(TOP_1M_PATH):
+        with open(TOP_1M_PATH, 'r') as f:
+            TOP_1M_LIST = f.read().splitlines()
+        print(f"[INFO] Loaded top 1M domains list in {time.time() - start_t:.2f} seconds")
+    else:
+        print(f"[WARNING] Top 1M domains file not found at: {TOP_1M_PATH}")
+
+    print("[INFO] Loading domain rank json from disk...")
+    start_t = time.time()
+    if os.path.exists(DOMAIN_RANK_PATH):
+        with open(DOMAIN_RANK_PATH, 'r') as f:
+            DOMAIN_RANK_DICT = json.load(f)
+        print(f"[INFO] Loaded domain rank json in {time.time() - start_t:.2f} seconds")
+    else:
+        print(f"[WARNING] Domain rank json file not found at: {DOMAIN_RANK_PATH}")
+
+    if os.path.exists(URL_SHORTENERS_PATH):
+        with open(URL_SHORTENERS_PATH, 'r') as f:
+            URL_SHORTENERS_LIST = f.read().splitlines()
+    else:
+        print(f"[WARNING] URL shorteners list not found at: {URL_SHORTENERS_PATH}")
+except Exception as e:
+    print(f"[ERROR] Failed to load data lists in model.py: {e}")
+
+
+
+def fetch_url_metadata(url):
+    metadata = {
+        'status_code': False,
+        'headers': {},
+        'redirects': [],
+        'content': ''
+    }
+    try:
+        # Use a reasonable timeout and browser user-agent
+        response = requests.get(url, timeout=5, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Camillo/2.0'})
+        metadata['status_code'] = response.status_code
+        metadata['headers'] = response.headers
+        metadata['content'] = response.text
+        if response.history:
+            metadata['redirects'] = [resp.url for resp in response.history]
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch URL metadata for {url}: {e}")
+    return metadata
 
 # check whether the link is active or not
-def validate_url(url):
+def validate_url(url_or_metadata):
+    if isinstance(url_or_metadata, dict):
+        return url_or_metadata.get('status_code', False)
     try:
-        response = requests.get(url)
+        response = requests.get(url_or_metadata, timeout=5)
         return response.status_code
     except requests.exceptions.RequestException:
         return False  # or any default value you prefer
@@ -74,16 +130,10 @@ def get_full_url_for_model(partial_url):
 
 # get domain rank if it exists in top 1M list
 def get_domain_rank(domain):
-    
-    with open('static/data/sorted-top1million.txt') as f:
-        top1million = f.read().splitlines()
-
-    is_in_top1million = binary_search(top1million, domain)
+    is_in_top1million = binary_search(TOP_1M_LIST, domain)
 
     if is_in_top1million == 1:
-        with open('static/data/domain-rank.json', 'r') as f:
-            domain_rank_dict = json.load(f)
-        rank = domain_rank_dict.get(domain, 0)
+        rank = DOMAIN_RANK_DICT.get(domain, 0)
         return int(rank)
     else:
         return 0
@@ -151,9 +201,12 @@ def pascal_case(s):
 
 
 # check for HSTS support
-def hsts_support(url): # url should be http / https as prefix
+def hsts_support(url_or_metadata): # url should be http / https as prefix
     try:
-        response = requests.get(url)
+        if isinstance(url_or_metadata, dict):
+            headers = url_or_metadata.get('headers', {})
+            return 1 if 'Strict-Transport-Security' in headers else 0
+        response = requests.get(url_or_metadata, timeout=5)
         headers = response.headers
         if 'Strict-Transport-Security' in headers:
             return 1
@@ -166,10 +219,7 @@ def hsts_support(url): # url should be http / https as prefix
 # check for URL shortening services
 def is_url_shortened(domain): 
     try:
-        with open('static/data/url-shorteners.txt') as f:
-            services_arr = f.read().splitlines()
-        
-        for service in services_arr:
+        for service in URL_SHORTENERS_LIST:
             if service in domain:
                 return 1
         return 0
@@ -188,9 +238,11 @@ def ip_present(url):
 
 
 # check for website redirects
-def url_redirects(url):
+def url_redirects(url_or_metadata):
     try:
-        response = requests.get(url)
+        if isinstance(url_or_metadata, dict):
+            return url_or_metadata.get('redirects', [])
+        response = requests.get(url_or_metadata, timeout=5)
         if len(response.history) > 1:
             # URL is redirected
             url_history = [] # returns array of redirected URLs
@@ -226,11 +278,16 @@ def too_deep_url(url):
 
 
 # check whether the URL is having 
-def content_check(url):
+def content_check(url_or_metadata):
     try:
-
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
+        if isinstance(url_or_metadata, dict):
+            content = url_or_metadata.get('content', '')
+            if not content:
+                return 0
+            soup = BeautifulSoup(content, 'html.parser')
+        else:
+            response = requests.get(url_or_metadata, timeout=5)
+            soup = BeautifulSoup(response.content, 'html.parser')
 
         result = {'onmouseover':0, 'right-click':0, 'form':0, 'iframe':0, 'login':0, 'popup':0}
 
@@ -390,7 +447,10 @@ def calculate_trust_score(current_score, case, value):
         return score
 
     elif case == 'domain_age':
-        if value < 5:
+        if isinstance(value, str) or value is None:
+            # If age is not given (e.g., private WHOIS), treat as moderate risk
+            score = current_score - (PROPERTY_SCORE_WEIGHTAGE['domain_age'] * BASE_SCORE * 0.5)
+        elif value < 5:
             score = current_score - (PROPERTY_SCORE_WEIGHTAGE['domain_age'] * BASE_SCORE)
         elif value >= 5 and value < 10:
             score = current_score
@@ -428,4 +488,18 @@ def calculate_trust_score(current_score, case, value):
     elif case == 'too_deep_url':
         if value == 1:
             score = current_score - (PROPERTY_SCORE_WEIGHTAGE['too_deep_url'] * BASE_SCORE)
+        return score
+
+    elif case == 'content':
+        if isinstance(value, dict):
+            # Calculate deductions for features like right-click disabled, active onmouseover, popup divs, etc.
+            deductions = 0
+            if value.get('onmouseover') == 1:
+                deductions += 1
+            if value.get('right-click') == 1:
+                deductions += 1
+            if value.get('popup') == 1:
+                deductions += 1
+            if deductions > 0:
+                score = current_score - (PROPERTY_SCORE_WEIGHTAGE['content'] * BASE_SCORE * deductions)
         return score

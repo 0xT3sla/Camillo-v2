@@ -72,11 +72,12 @@
         
     </style>
     <div class="nav-bar">
-        <img class="nav-logo" src="static\logo\3x\Asset 1@2x.png" >
+        <img class="nav-logo" src="{{ url_for('static', filename='logo/3x/Asset 1@2x.png') }}" >
         <ul>
-        <li><a href="/" >Home</a></li>
-        <li><a href="">About</a></li>    
-        <ul>
+            <li><a href="/" >Home</a></li>
+            <li><a href="/about">About</a></li>    
+            <li><a href="/api/docs">API Docs</a></li>
+        </ul>
     </div>    
     
     <div class="about">

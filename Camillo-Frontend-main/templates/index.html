@@ -1,324 +1,339 @@
 {% extends "base.html" %}
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        
-    </head>
 
-<body>
-    
-
-    {% block content %}
-
-    <div class="nav-bar">
-        <img class="nav-logo" src="static\logo\3x\Asset 1@2x.png" >
-        <ul>
-        <li><a href="/index" >Home</a></li>
+{% block content %}
+<div class="nav-bar">
+    <img class="nav-logo" src="{{ url_for('static', filename='logo/3x/Asset 1@2x.png') }}" >
+    <ul>
+        <li><a href="/">Home</a></li>
         <li><a href="/about">About</a></li>    
-        <ul>
-    </div>    
+        <li><a href="/api/docs">API Docs</a></li>
+    </ul>
+</div>
 
-        <div class="logo">
-            <img src="static\logo\3x\Asset 2@3x.png" alt="logo" width="220px" >
-        </div><br>
-        
-        <form action="/" method="post" class="searchbar" >
-              <input  id="urlInput" type="text" name="url" placeholder="Example url: https://example.org/" required="required" />
-              <button type="submit" ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#ffffff" d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/></svg></button>
-        </form>
-        
+<div class="main-container">
+    <div class="logo">
+        <img src="{{ url_for('static', filename='logo/3x/Asset 2@3x.png') }}" alt="logo">
+    </div>
 
+    <!-- Search Form -->
+    <form action="/" method="post" class="searchbar" id="searchForm">
+        <input id="urlInput" type="text" name="url" placeholder="Enter URL to analyze (e.g., https://example.com)" required />
+        <button type="submit">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
+            </svg>
+        </button>
+    </form>
 
-       
-        {% if output != "NA" %}
-        <span class="urls"><b>Showing results for</b>:{{output.url}}</span>
-        <div class="result">
-            {% if output.status == "SUCCESS" %}
-            <br><br>
-            <p class="final"> Final Outcome </p><p class="trust"> Trust Score </p><p class="Model"> Suspicion Score </p>
-            <div class="bars">
-                <div class="final-verdict" id="finalVerdict" style="{% if output.final_verdict == False %} background: linear-gradient(to top, #4CAF50 0%, #2E7D32 100%); {% else %} background: linear-gradient(to top, #f4436f 0%, #ad2525 100%); {% endif %}">
-                      {% if output.final_verdict == False %}
-                        <p>URL seems to be safe !</p>
-                      {% else %}
-                        <p>Looks like phishing site !! Be cautious when visiting</p>
-                      {% endif %}
-                  </div>
-
-            
-            <div class="progress-bar" title="The Trust Score is calculated with Traditional methods to predict the level of trustworthiness of the URL">
-                <div class="circular-progress" >
-                    <span class="progress-value" >{{output.trust_score}}</span>
-                    <p ></p>
-                </div>
+    <!-- Skeleton Loading Screen -->
+    <div class="loading-skeleton" id="skeletonLoader">
+        <div class="skeleton-row header"></div>
+        <div style="display: flex; justify-content: space-around; margin-bottom: 30px;">
+            <div>
+                <div class="skeleton-circle"></div>
+                <div class="skeleton-row" style="width: 80px;"></div>
             </div>
-        
-       
-            <div class="progress-bar-1" title="Suspicion Score uses Machine learning to predict the chances of the URL being an actual phishing site.">
-                <div class="circular-progress-1">
-                    <span class="progress-value-1">{{output.model_score}}</span>
-                </div>
+            <div>
+                <div class="skeleton-circle"></div>
+                <div class="skeleton-row" style="width: 80px;"></div>
+            </div>
+            <div>
+                <div class="skeleton-circle"></div>
+                <div class="skeleton-row" style="width: 80px;"></div>
             </div>
         </div>
+        <div class="skeleton-row" style="width: 90%;"></div>
+        <div class="skeleton-row" style="width: 75%;"></div>
+        <div class="skeleton-row" style="width: 85%;"></div>
+    </div>
 
-       
-           
+    {% if output != "NA" %}
+        {% if output.status == "SUCCESS" %}
+        <span class="urls"><b>Showing results for:</b> {{ output.url }}</span>
         
-            <script >
-                document.addEventListener("DOMContentLoaded", function () {
-                    let circularProgress = document.querySelector(".circular-progress"),
-                        progressValue = document.querySelector(".progress-value");
-            
-                    let progressStartValue = 0,
-                        progressEndValue = parseInt("{{output.trust_score}}"), // Parse the trust score as an integer
-                        speed = 35;
-            
-                    let progress = setInterval(() => {
-                        progressStartValue++;
-            
-                        progressValue.textContent = `${progressStartValue}%`;
-            
-                        // Set color based on trust score ranges
-                        if (progressStartValue >= 0 && progressStartValue < 60) {
-                            circularProgress.style.background = `conic-gradient(red ${progressStartValue * 3.6}deg, #ededed 0deg)`;
-                        } else if (progressStartValue >= 60 && progressStartValue < 70) {
-                            circularProgress.style.background = `conic-gradient(orange ${progressStartValue * 3.6}deg, #ededed 0deg)`;
-                        } else if (progressStartValue >= 70 && progressStartValue < 90) {
-                            circularProgress.style.background = `conic-gradient(yellowgreen ${progressStartValue * 3.6}deg, #ededed 0deg)`;
-                        } else {
-                            circularProgress.style.background = `conic-gradient(green ${progressStartValue * 3.6}deg, #ededed 0deg)`;
-                        }
-            
-                        if (progressStartValue >= progressEndValue) { // Fix the condition for comparison
-                            clearInterval(progress);
-                        }
-                    }, speed);
-                });
-                </script>
-                <script>
-                    document.addEventListener("DOMContentLoaded", function () {
-                        let circularProgress = document.querySelector(".circular-progress-1"),
-                            progressValue = document.querySelector(".progress-value-1");
-                
-                        let progressStartValue = 0,
-                            progressEndValue = parseInt("{{output.model_score}}"), // Parse the trust score as an integer
-                            speed = 35;
-                
-                        let progress = setInterval(() => {
-                            progressStartValue++;
-                
-                            progressValue.textContent = `${progressStartValue}%`;
-                
-                            // Set color based on trust score ranges
-                            if (progressStartValue >= 0 && progressStartValue < 30) {
-                                circularProgress.style.background = `conic-gradient(green ${progressStartValue * 3.6}deg, #ededed 0deg)`;
-                            } else if (progressStartValue >= 30 && progressStartValue < 50) {
-                                circularProgress.style.background = `conic-gradient(yellowgreen ${progressStartValue * 3.6}deg, #ededed 0deg)`;
-                            } else if (progressStartValue >= 50 && progressStartValue < 70) {
-                                circularProgress.style.background = `conic-gradient(orange ${progressStartValue * 3.6}deg, #ededed 0deg)`;
-                            } else {
-                                circularProgress.style.background = `conic-gradient(red ${progressStartValue * 3.6}deg, #ededed 0deg)`;
-                            }
-                
-                            if (progressStartValue >= progressEndValue) { // Fix the condition for comparison
-                                clearInterval(progress);
-                            }
-                        }, speed);
-                    });
-                    </script>
-    
+        <div class="result">
+            <div class="result-header">
+                <!-- Verdict Box -->
+                <div class="metric-box">
+                    <span class="metric-title">Verdict</span>
+                    <div class="final-verdict {% if output.final_verdict == False %}safe{% else %}phishing{% endif %}" id="finalVerdict">
+                        {% if output.final_verdict == False %}
+                            <p>URL Seems Safe</p>
+                            <span style="font-size: 0.8rem; font-weight: normal; margin-top: 5px; opacity: 0.8;">No major threats detected</span>
+                        {% else %}
+                            <p>Suspicious URL</p>
+                            <span style="font-size: 0.8rem; font-weight: normal; margin-top: 5px; opacity: 0.8;">Phishing risk detected!</span>
+                        {% endif %}
+                    </div>
+                </div>
 
-            
-            <!-- <strong>Trust Score : {{output.trust_score}} / 100 </strong>
-            <strong>
+                <!-- Trust Score Gauge -->
+                <div class="metric-box" title="Calculated using heuristics like domain age, HSTS, redirects, and popularity list (higher is safer).">
+                    <span class="metric-title">Trust Score</span>
+                    <div class="progress-bar">
+                        <div class="circular-progress" id="trustProgress">
+                            <span class="progress-value" id="trustValue">0%</span>
+                        </div>
+                    </div>
+                </div>
 
-                {% if output.trust_score >= 0 and output.trust_score < 60 %}
-                <span style="color: red; font-size: 1.25rem">Trust Score : {{output.trust_score}} / 100</span>
-                {% elif output.trust_score >= 60 and output.trust_score < 70 %}
-                <span style="color: orange; font-size: 1.25rem">Trust Score : {{output.trust_score}} / 100</span>
-                {% elif output.trust_score >= 70 and output.trust_score < 90 %}
-                <span style="color: yellowgreen; font-size: 1.25rem">Trust Score : {{output.trust_score}} / 100</span>
-                {% else %}
-                <span style="color: green; font-size: 1.25rem">Trust Score : {{output.trust_score}} / 100</span>
-                {% endif %} 
+                <!-- Suspicion Score Gauge -->
+                <div class="metric-box" title="Neural network prediction score of how suspicious the URL is (lower is safer).">
+                    <span class="metric-title">Suspicion Score</span>
+                    <div class="progress-bar-1">
+                        <div class="circular-progress-1" id="suspicionProgress">
+                            <span class="progress-value-1" id="suspicionValue">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            </strong>
-             -->
-   
-            <br>
-
-            {% if output.msg is defined %}
-                <br>
-              {{output.msg}}
+            <!-- Threat Analysis Breakdown -->
+            {% if output.breakdown %}
+            <h3 class="section-title">Threat Breakdown Analysis</h3>
+            <div class="breakdown-list">
+                {% for item in output.breakdown %}
+                <div class="breakdown-card {{ item.severity }}">
+                    <div class="breakdown-info">
+                        <h4>{{ item.title }}</h4>
+                        <p>{{ item.desc }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
             {% endif %}
 
+            <!-- Actions -->
             {% if output.response_status != False %}
-        
-                
-            <br><br>
+            <h3 class="section-title">Webpage Safe Sandbox Actions</h3>
+            <div class="action-buttons">
+                <form id="preview" action="{{ url_for('preview') }}" method="POST" target="_blank" style="display:none;">
+                    <input type="hidden" name="url" value="{{ output.url }}">
+                </form>
+                <button class="preview-button" onclick="document.getElementById('preview').submit()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-88.6-71.1c-5.8-.2-9.2 6.1-7.4 11.7c2.1 6.4 3.3 13.2 3.3 20.3z"/></svg>
+                    Sandbox Preview URL
+                </button>
 
-            
-            <form id="preview" class="preview-form" action="{{ url_for('preview')}}" method="POST" target="_blank">
-                <input type="hidden" name="url" value="{{output.url}}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path fill="#ffffff" d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-88.6-71.1c-5.8-.2-9.2 6.1-7.4 11.7c2.1 6.4 3.3 13.2 3.3 20.3z"/></svg>
-            </form>
-            
-            <button class = "preview-button" onclick="document.getElementById('preview').submit()">Preview URL within Camillo</button>
-
-            <form id="source-code" class="source-code-form" action="{{ url_for('view_source_code')}}" method="POST" target="_blank">
-                <input type="hidden" name="url" value="{{output.url}}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><path fill="#ffffff" d="M392.8 1.2c-17-4.9-34.7 5-39.6 22l-128 448c-4.9 17 5 34.7 22 39.6s34.7-5 39.6-22l128-448c4.9-17-5-34.7-22-39.6zm80.6 120.1c-12.5 12.5-12.5 32.8 0 45.3L562.7 256l-89.4 89.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l112-112c12.5-12.5 12.5-32.8 0-45.3l-112-112c-12.5-12.5-32.8-12.5-45.3 0zm-306.7 0c-12.5-12.5-32.8-12.5-45.3 0l-112 112c-12.5 12.5-12.5 32.8 0 45.3l112 112c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256l89.4-89.4c12.5-12.5 12.5-32.8 0-45.3z"/></svg>
-            </form>
-
-            <button class = "preview-button" onclick="document.getElementById('source-code').submit()">Show Source Code of URL</button>
-
-            <br><br>(External scripts are disabled for your safety.)
-
-            {% else %}
-
-               <br><br>
-               Can not access this page at the moment. Page may be down or may have blocked viewing with scripts.
-
+                <form id="source-code" action="{{ url_for('view_source_code') }}" method="POST" target="_blank" style="display:none;">
+                    <input type="hidden" name="url" value="{{ output.url }}">
+                </form>
+                <button class="preview-button" onclick="document.getElementById('source-code').submit()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><path d="M392.8 1.2c-17-4.9-34.7 5-39.6 22l-128 448c-4.9 17 5 34.7 22 39.6s34.7-5 39.6-22l128-448c4.9-17-5-34.7-22-39.6zm80.6 120.1c-12.5 12.5-12.5 32.8 0 45.3L562.7 256l-89.4 89.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l112-112c12.5-12.5 12.5-32.8 0-45.3l-112-112c-12.5-12.5-32.8-12.5-45.3 0zm-306.7 0c-12.5-12.5-32.8-12.5-45.3 0l-112 112c-12.5 12.5-12.5 32.8 0 45.3l112 112c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256l89.4-89.4c12.5-12.5 12.5-32.8 0-45.3z"/></svg>
+                    View Source HTML
+                </button>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">* Note: External scripts are disabled within the preview sandbox for your safety.</p>
             {% endif %}
 
-
-
-
-            <br><br><br>
-
-
-            <strong>Info for Nerds</strong>
-
-            <br><br>
+            <!-- Technical properties -->
+            <h3 class="section-title">Technical Domain Details</h3>
             <table class="table-view">
                 <thead>
                     <tr>
-                        <th>Property</th>
-                        <th>Value</th>
+                        <th>Metric Domain Key</th>
+                        <th>Extracted Analysis Value</th>
                     </tr>
                 </thead>
                 <tbody>
-
                     <tr>
                         <td>Global Rank</td>
-                        <td>{{output.rank}}</td>
+                        <td>{{ output.rank }}</td>
                     </tr>
-
                     <tr>
-                        <td>HTTP Status Code</td>
-                        <td>{{output.response_status}}</td>
+                        <td>HTTP Response Status</td>
+                        <td>{{ output.response_status if output.response_status else 'Down / Offline' }}</td>
                     </tr>
-
                     <tr>
-                        <td>Domain Age</td>
-                        <td>{{output.age}}</td>
+                        <td>Domain Registration Age</td>
+                        <td>{{ output.age }}</td>
                     </tr>
-
                     <tr>
-                        <td>Use of URL Shortener</td>
-                        <td>{% if output.is_url_shortened == 1%} YES {% else %} NO {% endif %}</td>
+                        <td>Uses URL Shortener</td>
+                        <td>{{ 'YES' if output.is_url_shortened == 1 else 'NO' }}</td>
                     </tr>
-
                     <tr>
-                        <td>HSTS Support</td>
-                        <td>{% if output.hsts_support == 1%} YES {% else %} NO {% endif %}</td>
+                        <td>HSTS Protocol Support</td>
+                        <td>{{ 'YES' if output.hsts_support == 1 else 'NO' }}</td>
                     </tr>
-
                     <tr>
-                        <td>IP instead of Domain</td>
-                        <td>{% if output.ip_present == 1%} YES {% else %} NO {% endif %}</td>
+                        <td>Raw IP in Address Bar</td>
+                        <td>{{ 'YES' if output.ip_present == 1 else 'NO' }}</td>
                     </tr>
-
                     <tr>
-                        <td>URL Redirects</td>
-                        <td>{% if output.url_redirects == 0%} NO {% else %}  {% for value in output.url_redirects %} {{ value }} &nbsp;{% endfor %} {% endif %}</td>
+                        <td>Destination IP Address</td>
+                        <td>{{ output.ip }}</td>
                     </tr>
-
-                    <tr>
-                        <td>IP of Domain</td>
-                        <td>{{output.ip}}</td>
-                    </tr>
-
-                    <tr>
-                        <td>Too Long URL</td>
-                        <td>{% if output.too_long_url == 1%} YES {% else %} NO {% endif %}</td>
-                    </tr>
-
-                    <tr>
-                        <td>Too Deep URL</td>
-                        <td>{% if output.too_deep_url == 1%} YES {% else %} NO {% endif %}</td>
-                    </tr>
-
                 </tbody>
             </table>
 
-            <br><br>
-
-
-
-            {% if output.ssl != 0 %}
-            
-            <strong> SSL Certificate Details </strong>
-            <br><br>
-
+            {% if output.ssl and output.ssl != 0 %}
+            <h3 class="section-title">SSL Certificate Analysis</h3>
             <table class="table-view">
                 <thead>
                     <tr>
-                        <th>Property</th>
-                        <th>Value</th>
+                        <th>SSL Property</th>
+                        <th>Issuer Metadata Details</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for key, value in output.ssl.items() %}
+                    {% for key, val in output.ssl.items() %}
                     <tr>
                         <td>{{ key }}</td>
-                        <td>{{ value }}</td>
+                        <td>{{ val }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             {% endif %}
 
-
-
-            <br><br>
-            <strong> WHOIS Data </strong>
-            <br><br>
-
+            {% if output.whois %}
+            <h3 class="section-title">WHOIS Registrar Records</h3>
             <table class="table-view">
                 <thead>
                     <tr>
-                        <th>Property</th>
-                        <th>Value</th>
+                        <th>Field Name</th>
+                        <th>Registrant Values</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for key, value in output.whois.items() %}
+                    {% for key, val in output.whois.items() %}
                     <tr>
                         <td>{{ key }}</td>
-                        <td>{{ value }}</td>
+                        <td>{{ val }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-
-
-            
-
-
-            {% else %} URL : {{output.url}} <br> Message : {{output.msg}} <br> {% endif %}
-            <br><br>
+            {% endif %}
 
         </div>
-        {% endif %} {% endblock %}
+        {% else %}
+        <div class="result" style="border-color: var(--danger-red);">
+            <h3 style="color: var(--danger-red); margin-bottom: 10px;">Analysis Failed</h3>
+            <p>{{ output.msg }}</p>
+        </div>
+        {% endif %}
+    {% endif %}
 
+    <!-- History Panel -->
+    <div class="recent-scans-panel">
+        <h3 style="margin-bottom: 15px; font-size: 1.15rem; color: #e0aaff;">Recent Scanning Sessions</h3>
+        <div id="recentScansList">
+            <p style="color: var(--text-muted); font-size: 0.9rem;">No recent scans in this browser session.</p>
+        </div>
+    </div>
+</div>
 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // 1. Loading Skeleton Trigger
+    const searchForm = document.getElementById("searchForm");
+    const skeletonLoader = document.getElementById("skeletonLoader");
+    const resultPanel = document.querySelector(".result");
+    const urlsBanner = document.querySelector(".urls");
 
-</body>
+    if (searchForm) {
+        searchForm.addEventListener("submit", function() {
+            if (resultPanel) resultPanel.style.display = "none";
+            if (urlsBanner) urlsBanner.style.display = "none";
+            skeletonLoader.style.display = "block";
+            skeletonLoader.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
 
-</html>
+    // 2. Circular gauges progress animation
+    {% if output != "NA" and output.status == "SUCCESS" %}
+    animateGauge("trustProgress", "trustValue", parseInt("{{ output.trust_score }}"), true);
+    animateGauge("suspicionProgress", "suspicionValue", parseInt("{{ output.model_score }}"), false);
+    
+    // Save to local storage history
+    saveScanHistory("{{ output.url }}", {{ 'true' if output.final_verdict else 'false' }});
+    {% endif %}
 
+    // 3. Render Scan History
+    renderScanHistory();
+});
 
+function animateGauge(progressId, valueId, endVal, isTrust) {
+    const progressEl = document.getElementById(progressId);
+    const valueEl = document.getElementById(valueId);
+    if (!progressEl || !valueEl) return;
 
+    let startVal = 0;
+    const speed = 25;
+    const step = Math.ceil(endVal / 30) || 1;
 
+    const timer = setInterval(() => {
+        startVal += step;
+        if (startVal >= endVal) {
+            startVal = endVal;
+            clearInterval(timer);
+        }
+
+        valueEl.textContent = `${startVal}%`;
+        
+        let color = '';
+        if (isTrust) {
+            // Higher is better for Trust
+            if (startVal < 60) color = '#ef476f'; // red
+            else if (startVal < 75) color = '#ffd166'; // yellow
+            else color = '#06d6a0'; // green
+        } else {
+            // Lower is better for Suspicion
+            if (startVal < 30) color = '#06d6a0'; // green
+            else if (startVal < 60) color = '#ffd166'; // yellow
+            else color = '#ef476f'; // red
+        }
+
+        progressEl.style.background = `conic-gradient(${color} ${startVal * 3.6}deg, #1c1c24 0deg)`;
+    }, speed);
+}
+
+function saveScanHistory(url, isPhishing) {
+    let history = JSON.parse(localStorage.getItem("camillo_scans") || "[]");
+    // Filter duplicates
+    history = history.filter(item => item.url !== url);
+    // Unshift to place latest first
+    history.unshift({ url: url, isPhishing: isPhishing, time: new Date().toLocaleTimeString() });
+    // Cap at 5
+    if (history.length > 5) history.pop();
+    localStorage.setItem("camillo_scans", JSON.stringify(history));
+}
+
+function renderScanHistory() {
+    const listEl = document.getElementById("recentScansList");
+    if (!listEl) return;
+
+    const history = JSON.parse(localStorage.getItem("camillo_scans") || "[]");
+    if (history.length === 0) return;
+
+    listEl.innerHTML = "";
+    history.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "recent-scan-item";
+
+        const link = document.createElement("a");
+        link.className = "recent-scan-url";
+        link.href = "#";
+        link.textContent = item.url;
+        link.addEventListener("click", (e) => {
+            e.preventDefault();
+            const input = document.getElementById("urlInput");
+            if (input) {
+                input.value = item.url;
+                document.getElementById("searchForm").submit();
+            }
+        });
+
+        const badge = document.createElement("span");
+        badge.className = `recent-scan-badge ${item.isPhishing ? 'phishing' : 'safe'}`;
+        badge.textContent = item.isPhishing ? 'Suspicious' : 'Safe';
+
+        row.appendChild(link);
+        row.appendChild(badge);
+        listEl.appendChild(row);
+    });
+}
+</script>
+{% endblock %}

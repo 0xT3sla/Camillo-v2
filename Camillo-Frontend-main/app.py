@@ -48,14 +48,6 @@ def home():
             if response.status_code == 200:
                 # Convert JSON response to dictionary
                 output = response.json()
-                # Redirect to /verified route with details
-                if output.get('google_verified') == 'yes':
-                    return redirect(url_for('verified', 
-                        google_verified=output.get('google_verified'),
-                        platform_type=output.get('platform_type'),
-                        threat_entry_type=output.get('threat_entry_type'),
-                        threat_type=output.get('threat_type')))
-                
             else:
                 output = {'status': 'ERROR', 'msg': f"Failed to analyze URL: {response.status_code} - {response.text}"}
         else:
@@ -109,6 +101,10 @@ def view_source_code():
 @app.route('/about')
 def about():
     return render_template('about.html')
+
+@app.route('/api/docs')
+def api_docs():
+    return render_template('api_docs.html')
 
 @app.route('/verified', methods=['GET', 'POST'])
 def verified():

@@ -27,6 +27,9 @@ def banner(api_url):
     print("Send POST requests to: " + colorama.Fore.BLUE + f"{api_url}"+ colorama.Style.RESET_ALL)
 
 
+# Global cache for analysis results
+ANALYSIS_CACHE = {}
+
 @app.route('/api/analyze-url', methods=['POST'])
 def analyze_url():
     try:
@@ -37,8 +40,17 @@ def analyze_url():
         encoded_url = data.get('url', '')
         url = base64.urlsafe_b64decode(encoded_url).decode('utf-8')
         
+        # Check cache
+        if url in ANALYSIS_CACHE:
+            print(f"[INFO] Cache HIT for: {url}")
+            return jsonify(ANALYSIS_CACHE[url])
+        
         # Call the main function to analyze the URL
         result = controller.main(url)
+        
+        # Cache results if status is SUCCESS
+        if result.get('status') == 'SUCCESS':
+            ANALYSIS_CACHE[url] = result
         
         # Return the response as JSON
         return jsonify(result)
