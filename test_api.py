@@ -29,13 +29,20 @@ sys.modules['tensorflow.keras'] = MagicMock()
 
 # Mock requests.get and requests.post
 mock_requests = MagicMock()
-mock_resp = MagicMock()
-mock_resp.status_code = 200
-mock_resp.headers = {'Strict-Transport-Security': 'max-age=63072000'}
-mock_resp.text = "<html><body><form></form></body></html>"
-mock_resp.content = b"<html><body><form></form></body></html>"
-mock_resp.history = []
-mock_requests.get.return_value = mock_resp
+
+def mock_get(url, *args, **kwargs):
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.headers = {'Strict-Transport-Security': 'max-age=63072000'}
+    if 'StevenBlack' in url:
+        resp.text = "# StevenBlack Hosts\n0.0.0.0 badsite.com\n0.0.0.0 anothersuspiciousdomain.net"
+    else:
+        resp.text = "<html><body><form></form></body></html>"
+        resp.content = b"<html><body><form></form></body></html>"
+    resp.history = []
+    return resp
+
+mock_requests.get.side_effect = mock_get
 
 mock_post_resp = MagicMock()
 mock_post_resp.content = b'{"results": {"valid": false}}'
@@ -120,6 +127,14 @@ def run_tests():
         print(f"[TEST] Google Safe Browsing Flagged Verdict: {res_flagged.get('final_verdict')}")
         assert res_flagged.get('final_verdict') is True, "Phishing verdict must be True when Safe Browsing flags it"
         print("[TEST] Google Safe Browsing warning bypass fix check: PASSED")
+
+    # 6. Verify blocklist check functionality
+    print("\n[TEST] Verifying open source domain blocklist checks...")
+    assert model.check_blocklist("badsite.com") is True, "Exact domain match in blocklist should be True"
+    assert model.check_blocklist("sub.badsite.com") is True, "Subdomain match in blocklist should be True"
+    assert model.check_blocklist("anothersuspiciousdomain.net") is True, "Second host list domain should be True"
+    assert model.check_blocklist("google.com") is False, "Clean domains should not be blocked"
+    print("[TEST] Open source domain blocklist checks: PASSED")
 
     print("\n[TEST] All tests PASSED successfully!")
 

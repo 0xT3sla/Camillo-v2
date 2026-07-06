@@ -39,6 +39,12 @@ def main(url):
         else:
             response['rank'] = '10,00,000+'
 
+        # open source blocklists check (StevenBlack adware/malware hosts list)
+        in_blocklist = model.check_blocklist(domain)
+        if in_blocklist:
+            trust_score = max(0, trust_score - 60)
+        response['in_blocklist'] = in_blocklist
+
         # domain_age and whois_data
         whois_data = model.whois_data(domain)
         trust_score = model.calculate_trust_score(trust_score, 'domain_age', whois_data['age'])
@@ -255,6 +261,14 @@ def main(url):
             breakdown.append({
                 "title": "Google Safe Browsing",
                 "desc": f"Google Safe Browsing explicitly flags this URL as dangerous! Threat type: {response.get('threat_type')}.",
+                "severity": "danger"
+            })
+
+        # 10. Open Source Blocklist matches
+        if in_blocklist:
+            breakdown.append({
+                "title": "Open Source Blocklist Match",
+                "desc": "Domain matches known malicious lists, adware hosts, or phishing tracking databases.",
                 "severity": "danger"
             })
 

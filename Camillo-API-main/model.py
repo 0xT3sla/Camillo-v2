@@ -35,10 +35,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TOP_1M_PATH = os.path.join(BASE_DIR, 'static', 'data', 'sorted-top1million.txt')
 DOMAIN_RANK_PATH = os.path.join(BASE_DIR, 'static', 'data', 'domain-rank.json')
 URL_SHORTENERS_PATH = os.path.join(BASE_DIR, 'static', 'data', 'url-shorteners.txt')
+LOCAL_BLOCKLIST_PATH = os.path.join(BASE_DIR, 'static', 'data', 'local-blocklist.txt')
 
 TOP_1M_LIST = []
 DOMAIN_RANK_DICT = {}
 URL_SHORTENERS_LIST = []
+MALICIOUS_BLOCKLIST_SET = set()
 
 try:
     print("[INFO] Loading top 1M domains list from disk...")
@@ -66,6 +68,68 @@ try:
         print(f"[WARNING] URL shorteners list not found at: {URL_SHORTENERS_PATH}")
 except Exception as e:
     print(f"[ERROR] Failed to load data lists in model.py: {e}")
+
+def load_or_update_blocklist():
+    global MALICIOUS_BLOCKLIST_SET
+    start_t = time.time()
+    
+    # 1. Load from local cache first if it exists
+    if os.path.exists(LOCAL_BLOCKLIST_PATH):
+        try:
+            with open(LOCAL_BLOCKLIST_PATH, 'r', encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        MALICIOUS_BLOCKLIST_SET.add(line.lower())
+            print(f"[INFO] Loaded {len(MALICIOUS_BLOCKLIST_SET)} domains from local blocklist in {time.time() - start_t:.2f}s")
+        except Exception as e:
+            print(f"[ERROR] Failed to load local blocklist cache: {e}")
+
+    # 2. Asynchronously update/pull from StevenBlack's adware/malware blocklist
+    # Timeout of 3s to prevent startup hang on slow networks
+    try:
+        print("[INFO] Checking for blocklist updates from StevenBlack hosts...")
+        update_url = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+        resp = requests.get(update_url, timeout=3)
+        if resp.status_code == 200:
+            new_domains = set()
+            for line in resp.text.splitlines():
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    parts = line.split()
+                    if len(parts) >= 2 and parts[0] in ('0.0.0.0', '127.0.0.1'):
+                        domain_val = parts[1].strip().lower()
+                        if domain_val not in ('localhost', 'localhost.localdomain', 'broadcasthost'):
+                            new_domains.add(domain_val)
+            
+            if new_domains:
+                MALICIOUS_BLOCKLIST_SET = new_domains
+                # Ensure the parent directory exists
+                os.makedirs(os.path.dirname(LOCAL_BLOCKLIST_PATH), exist_ok=True)
+                with open(LOCAL_BLOCKLIST_PATH, 'w', encoding='utf-8') as f:
+                    for d in sorted(MALICIOUS_BLOCKLIST_SET):
+                        f.write(d + '\n')
+                print(f"[INFO] Successfully updated local blocklist cache with {len(MALICIOUS_BLOCKLIST_SET)} domains in {time.time() - start_t:.2f}s")
+        else:
+            print(f"[WARNING] Blocklist update skipped. HTTP Status: {resp.status_code}")
+    except Exception as e:
+        print(f"[INFO] Blocklist update skipped (offline/timeout): {e}")
+
+# Run blocklist loader at startup
+load_or_update_blocklist()
+
+def check_blocklist(domain):
+    domain = domain.lower()
+    # Check exact matching first
+    if domain in MALICIOUS_BLOCKLIST_SET:
+        return True
+    # Check parent domain hierarchies (e.g. sub.domain.com -> domain.com)
+    parts = domain.split('.')
+    for i in range(len(parts) - 1):
+        test_domain = '.'.join(parts[i:])
+        if test_domain in MALICIOUS_BLOCKLIST_SET:
+            return True
+    return False
 
 
 
