@@ -1,6 +1,5 @@
 services:
   backend:
-    image: camillo-v2-backend-local:latest
     build: ./Camillo-API-main
     ports:
       - "6969:6969"
@@ -11,7 +10,6 @@ services:
       - FLASK_DEBUG=1
 
   frontend:
-    image: camillo-v2-frontend-local:latest
     build: ./Camillo-Frontend-main
     ports:
       - "5000:5000"
