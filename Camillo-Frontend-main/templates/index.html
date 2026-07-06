@@ -115,6 +115,11 @@
                     Sandbox Preview URL
                 </button>
 
+                <button class="preview-button live-sandbox-btn" onclick="startLiveSandbox('{{ output.url }}')">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M64 0C28.7 0 0 28.7 0 64V352c0 35.3 28.7 64 64 64H240l-10.7 32H160c-17.7 0-32 14.3-32 32s14.3 32 32 32H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H346.7L336 416H512c35.3 0 64-28.7 64-64V64c0-35.3-28.7-64-64-64H64zM512 64V288H64V64H512z"/></svg>
+                    Interactive Docker Sandbox
+                </button>
+
                 <form id="source-code" action="{{ url_for('view_source_code') }}" method="POST" target="_blank" style="display:none;">
                     <input type="hidden" name="url" value="{{ output.url }}">
                 </form>
@@ -335,5 +340,134 @@ function renderScanHistory() {
         listEl.appendChild(row);
     });
 }
+
+/* Interactive Sandbox Implementation */
+let sandboxWs = null;
+let sandboxTimer = null;
+
+function startLiveSandbox(url) {
+    const modal = document.getElementById("sandboxModal");
+    modal.style.display = "flex";
+    
+    const canvas = document.getElementById("sandboxCanvas");
+    const ctx = canvas.getContext("2d");
+    
+    // Clear canvas
+    ctx.fillStyle = "#121216";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "20px Outfit";
+    ctx.fillText("Launching container browser sandbox...", 50, 100);
+    
+    // Start countdown timer (strict 5 minutes)
+    let timeLeft = 300;
+    const timerText = document.getElementById("sandboxTimerText");
+    timerText.textContent = formatTime(timeLeft);
+    
+    clearInterval(sandboxTimer);
+    sandboxTimer = setInterval(() => {
+        timeLeft--;
+        timerText.textContent = formatTime(timeLeft);
+        if (timeLeft <= 0) {
+            closeLiveSandbox();
+            alert("Sandbox session expired (5-minute hard limit reached).");
+        }
+    }, 1000);
+    
+    // Establish connection to sandbox api websocket
+    const wsUrl = `ws://${window.location.hostname}:8080/sandbox/stream?url=${encodeURIComponent(url)}`;
+    console.log("[SANDBOX] Connecting to WS:", wsUrl);
+    
+    sandboxWs = new WebSocket(wsUrl);
+    
+    sandboxWs.onmessage = function(event) {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "frame") {
+            const img = new Image();
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = "data:image/jpeg;base64," + msg.data;
+        } else if (msg.type === "timeout") {
+            alert(msg.message);
+            closeLiveSandbox();
+        }
+    };
+    
+    sandboxWs.onclose = function() {
+        console.log("[SANDBOX] Connection closed.");
+    };
+    
+    sandboxWs.onerror = function(err) {
+        console.error("[SANDBOX] Error:", err);
+    };
+    
+    // Capture and dispatch mouse clicks on canvas
+    canvas.onmousedown = function(e) {
+        if (!sandboxWs || sandboxWs.readyState !== WebSocket.OPEN) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        const clickX = (e.clientX - rect.left) * scaleX;
+        const clickY = (e.clientY - rect.top) * scaleY;
+        
+        sandboxWs.send(JSON.stringify({
+            action: "click",
+            x: Math.round(clickX),
+            y: Math.round(clickY)
+        }));
+    };
+    
+    // Bind helper text input to route keystrokes
+    const keyInput = document.getElementById("sandboxKeyInput");
+    keyInput.value = "";
+    keyInput.focus();
+    
+    keyInput.oninput = function(e) {
+        if (!sandboxWs || sandboxWs.readyState !== WebSocket.OPEN) return;
+        const val = keyInput.value;
+        if (val) {
+            sandboxWs.send(JSON.stringify({
+                action: "type",
+                text: val
+            }));
+            keyInput.value = ""; // Reset
+        }
+    };
+}
+
+function formatTime(secs) {
+    const mins = Math.floor(secs / 60);
+    const remainingSecs = secs % 60;
+    return `${mins}:${remainingSecs.toString().padStart(2, '0')}`;
+}
+
+function closeLiveSandbox() {
+    clearInterval(sandboxTimer);
+    if (sandboxWs) {
+        sandboxWs.close();
+        sandboxWs = null;
+    }
+    document.getElementById("sandboxModal").style.display = "none";
+}
 </script>
+
+<!-- Safe Browser Sandbox Modal -->
+<div id="sandboxModal" class="sandbox-modal">
+    <div class="sandbox-content">
+        <div class="sandbox-header">
+            <h3 class="sandbox-title">Isolated Container Browser Sandbox</h3>
+            <div id="sandboxTimerText" class="sandbox-timer">5:00</div>
+        </div>
+        <div class="canvas-container">
+            <canvas id="sandboxCanvas" class="sandbox-canvas" width="1280" height="720"></canvas>
+        </div>
+        <div class="sandbox-footer">
+            <input type="text" id="sandboxKeyInput" class="sandbox-input-helper" placeholder="Type here to send keys to browser..." />
+            <button class="sandbox-stop-btn" onclick="closeLiveSandbox()">Stop Session</button>
+        </div>
+    </div>
+</div>
 {% endblock %}

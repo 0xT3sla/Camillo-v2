@@ -21,3 +21,23 @@ services:
       - FLASK_DEBUG=1
     depends_on:
       - backend
+
+  sandbox-browser:
+    image: browserless/chrome:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - MAX_CONCURRENT_SESSIONS=10
+      - MAX_SESSION_LIFETIME=300000
+    restart: always
+
+  sandbox-api:
+    build: ./Camillo-Sandbox-main
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./Camillo-Sandbox-main:/app
+    environment:
+      - BROWSERLESS_URL=ws://sandbox-browser:3000
+    depends_on:
+      - sandbox-browser
