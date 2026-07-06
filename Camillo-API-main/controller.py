@@ -45,6 +45,12 @@ def main(url):
             trust_score = max(0, trust_score - 60)
         response['in_blocklist'] = in_blocklist
 
+        # EasyList adware and trackers check
+        is_adware_tracker = model.check_easylist(domain)
+        if is_adware_tracker:
+            trust_score = max(0, trust_score - 15)
+        response['is_adware_tracker'] = is_adware_tracker
+
         # domain_age and whois_data
         whois_data = model.whois_data(domain)
         trust_score = model.calculate_trust_score(trust_score, 'domain_age', whois_data['age'])
@@ -270,6 +276,14 @@ def main(url):
                 "title": "Open Source Blocklist Match",
                 "desc": "Domain matches known malicious lists, adware hosts, or phishing tracking databases.",
                 "severity": "danger"
+            })
+
+        # 11. EasyList adware/tracker matches
+        if is_adware_tracker:
+            breakdown.append({
+                "title": "Adware & Tracker (EasyList)",
+                "desc": "Domain matches public EasyList filters, indicating it hosts ads, analytical tracking scripts, or adware packages.",
+                "severity": "warning"
             })
 
         response['breakdown'] = breakdown

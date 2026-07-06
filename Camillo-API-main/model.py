@@ -36,11 +36,13 @@ TOP_1M_PATH = os.path.join(BASE_DIR, 'static', 'data', 'sorted-top1million.txt')
 DOMAIN_RANK_PATH = os.path.join(BASE_DIR, 'static', 'data', 'domain-rank.json')
 URL_SHORTENERS_PATH = os.path.join(BASE_DIR, 'static', 'data', 'url-shorteners.txt')
 LOCAL_BLOCKLIST_PATH = os.path.join(BASE_DIR, 'static', 'data', 'local-blocklist.txt')
+LOCAL_EASYLIST_PATH = os.path.join(BASE_DIR, 'static', 'data', 'easylist.txt')
 
 TOP_1M_LIST = []
 DOMAIN_RANK_DICT = {}
 URL_SHORTENERS_LIST = []
 MALICIOUS_BLOCKLIST_SET = set()
+EASYLIST_DOMAINS_SET = set()
 
 try:
     print("[INFO] Loading top 1M domains list from disk...")
@@ -118,6 +120,62 @@ def load_or_update_blocklist():
 # Run blocklist loader at startup
 load_or_update_blocklist()
 
+def load_or_update_easylist():
+    global EASYLIST_DOMAINS_SET
+    start_t = time.time()
+    
+    # 1. Load from local cache first if it exists
+    if os.path.exists(LOCAL_EASYLIST_PATH):
+        try:
+            with open(LOCAL_EASYLIST_PATH, 'r', encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('!'):
+                        if line.startswith('||'):
+                            rule = line[2:]
+                            for delimiter in ('^', '$', '/', '*'):
+                                rule = rule.split(delimiter)[0]
+                            rule = rule.strip().lower()
+                            if '.' in rule and not rule.startswith('('):
+                                EASYLIST_DOMAINS_SET.add(rule)
+            print(f"[INFO] Loaded {len(EASYLIST_DOMAINS_SET)} domains from local EasyList in {time.time() - start_t:.2f}s")
+        except Exception as e:
+            print(f"[ERROR] Failed to load local EasyList cache: {e}")
+
+    # 2. Try to update/pull from EasyList official repo
+    try:
+        print("[INFO] Checking for EasyList updates...")
+        update_url = "https://easylist.to/easylist/easylist.txt"
+        resp = requests.get(update_url, timeout=3)
+        if resp.status_code == 200:
+            new_domains = set()
+            for line in resp.text.splitlines():
+                line = line.strip()
+                if line and not line.startswith('!'):
+                    if line.startswith('||'):
+                        rule = line[2:]
+                        for delimiter in ('^', '$', '/', '*'):
+                            rule = rule.split(delimiter)[0]
+                        rule = rule.strip().lower()
+                        if '.' in rule and not rule.startswith('('):
+                            new_domains.add(rule)
+            
+            if new_domains:
+                EASYLIST_DOMAINS_SET = new_domains
+                # Ensure the parent directory exists
+                os.makedirs(os.path.dirname(LOCAL_EASYLIST_PATH), exist_ok=True)
+                with open(LOCAL_EASYLIST_PATH, 'w', encoding='utf-8') as f:
+                    for d in sorted(EASYLIST_DOMAINS_SET):
+                        f.write(f"||{d}^\n")
+                print(f"[INFO] Successfully updated local EasyList cache with {len(EASYLIST_DOMAINS_SET)} domains in {time.time() - start_t:.2f}s")
+        else:
+            print(f"[WARNING] EasyList update skipped. HTTP Status: {resp.status_code}")
+    except Exception as e:
+        print(f"[INFO] EasyList update skipped (offline/timeout): {e}")
+
+# Run EasyList loader at startup
+load_or_update_easylist()
+
 def check_blocklist(domain):
     domain = domain.lower()
     # Check exact matching first
@@ -128,6 +186,19 @@ def check_blocklist(domain):
     for i in range(len(parts) - 1):
         test_domain = '.'.join(parts[i:])
         if test_domain in MALICIOUS_BLOCKLIST_SET:
+            return True
+    return False
+
+def check_easylist(domain):
+    domain = domain.lower()
+    # Check exact matching first
+    if domain in EASYLIST_DOMAINS_SET:
+        return True
+    # Check parent domain hierarchies
+    parts = domain.split('.')
+    for i in range(len(parts) - 1):
+        test_domain = '.'.join(parts[i:])
+        if test_domain in EASYLIST_DOMAINS_SET:
             return True
     return False
 

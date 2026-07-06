@@ -36,6 +36,8 @@ def mock_get(url, *args, **kwargs):
     resp.headers = {'Strict-Transport-Security': 'max-age=63072000'}
     if 'StevenBlack' in url:
         resp.text = "# StevenBlack Hosts\n0.0.0.0 badsite.com\n0.0.0.0 anothersuspiciousdomain.net"
+    elif 'easylist' in url:
+        resp.text = "! EasyList comments\n||adserver.com^\n||trackersite.xyz$third-party"
     else:
         resp.text = "<html><body><form></form></body></html>"
         resp.content = b"<html><body><form></form></body></html>"
@@ -135,6 +137,14 @@ def run_tests():
     assert model.check_blocklist("anothersuspiciousdomain.net") is True, "Second host list domain should be True"
     assert model.check_blocklist("google.com") is False, "Clean domains should not be blocked"
     print("[TEST] Open source domain blocklist checks: PASSED")
+
+    # 7. Verify EasyList checking functionality
+    print("\n[TEST] Verifying EasyList parser and check logic...")
+    assert model.check_easylist("adserver.com") is True, "Adserver domain should be blocked by EasyList"
+    assert model.check_easylist("sub.adserver.com") is True, "Sub.adserver domain should be blocked by EasyList"
+    assert model.check_easylist("trackersite.xyz") is True, "Tracker domain should be blocked by EasyList"
+    assert model.check_easylist("google.com") is False, "Clean domains should not be blocked by EasyList"
+    print("[TEST] EasyList checker checks: PASSED")
 
     print("\n[TEST] All tests PASSED successfully!")
 
