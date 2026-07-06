@@ -3,12 +3,21 @@ services:
     build: ./Camillo-API-main
     ports:
       - "6969:6969"
+    volumes:
+      - ./Camillo-API-main:/app
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
 
   frontend:
     build: ./Camillo-Frontend-main
     ports:
       - "5000:5000"
+    volumes:
+      - ./Camillo-Frontend-main:/app
     environment:
       - API_URL=http://backend:6969/api/analyze-url
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
     depends_on:
       - backend
