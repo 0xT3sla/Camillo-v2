@@ -359,20 +359,12 @@ function startLiveSandbox(url) {
     ctx.font = "20px Outfit";
     ctx.fillText("Launching container browser sandbox...", 50, 100);
     
-    // Start countdown timer (strict 5 minutes)
+    // Initialize countdown timer settings
     let timeLeft = 300;
     const timerText = document.getElementById("sandboxTimerText");
     timerText.textContent = formatTime(timeLeft);
-    
     clearInterval(sandboxTimer);
-    sandboxTimer = setInterval(() => {
-        timeLeft--;
-        timerText.textContent = formatTime(timeLeft);
-        if (timeLeft <= 0) {
-            closeLiveSandbox();
-            alert("Sandbox session expired (5-minute hard limit reached).");
-        }
-    }, 1000);
+    sandboxTimer = null; // Set to null, will start on first frame
     
     // Establish connection to sandbox api websocket
     const wsUrl = `ws://${window.location.hostname}:8080/sandbox/stream?url=${encodeURIComponent(url)}`;
@@ -383,6 +375,18 @@ function startLiveSandbox(url) {
     sandboxWs.onmessage = function(event) {
         const msg = JSON.parse(event.data);
         if (msg.type === "frame") {
+            // Start the 5-minute countdown once browser screencast initializes
+            if (!sandboxTimer) {
+                sandboxTimer = setInterval(() => {
+                    timeLeft--;
+                    timerText.textContent = formatTime(timeLeft);
+                    if (timeLeft <= 0) {
+                        closeLiveSandbox();
+                        alert("Sandbox session expired (5-minute hard limit reached).");
+                    }
+                }, 1000);
+            }
+            
             const img = new Image();
             img.onload = function() {
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
